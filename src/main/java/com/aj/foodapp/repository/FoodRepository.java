@@ -1,6 +1,6 @@
 package com.aj.foodapp.repository;
 
-import com.aj.foodapp.Entity.FoodEntity;
+import com.aj.foodapp.entity.FoodEntity;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,6 +1,6 @@
 package com.aj.foodapp.service;
 
-import com.aj.foodapp.Entity.FoodEntity;
+import com.aj.foodapp.entity.FoodEntity;
 import com.aj.foodapp.configuration.FileStorageConfig;
 import com.aj.foodapp.exception.CustomFileStorageException;
 import com.aj.foodapp.repository.FoodRepository;
@@ -8,7 +8,6 @@ import com.aj.foodapp.requestObject.FoodRequest;
 import com.aj.foodapp.responseObject.FoodResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
