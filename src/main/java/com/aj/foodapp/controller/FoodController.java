@@ -6,7 +6,6 @@ import com.aj.foodapp.service.FoodAppService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/foodapp/api")
@@ -25,7 +26,7 @@ public class FoodController {
 
     Logger log = LoggerFactory.getLogger(FoodController.class);
 
-    @PostMapping("/uploadfood")
+    @PostMapping("/uploadFood")
     public ResponseEntity<FoodResponse> uploadNewFood(@RequestPart("food") String foodString, @RequestPart("file") MultipartFile file, HttpServletRequest httpServletRequest)
     {
         log.info("Request URL : "+httpServletRequest.getRemoteAddr()+":"+httpServletRequest.getLocalPort()+""+httpServletRequest.getRequestURI());
@@ -51,6 +52,36 @@ public class FoodController {
         ResponseEntity<FoodResponse> foodResponseEntity = new ResponseEntity<>(foodResponse, HttpStatus.CREATED);
 
         log.info("Food Response Entity : "+foodResponseEntity.toString());
+
+        return foodResponseEntity;
+    }
+
+    @GetMapping("/getFoods")
+    public ResponseEntity<List<FoodResponse>> getAllFoods()
+    {
+        List<FoodResponse> listOfFoods = foodAppService.getAllFoods();
+
+        ResponseEntity<List<FoodResponse>> listOfFoodsResponseEntity = new ResponseEntity<>(listOfFoods,HttpStatus.OK);
+
+        return listOfFoodsResponseEntity;
+    }
+
+    @GetMapping("/getFoods/{foodId}")
+    public ResponseEntity<FoodResponse> getAllFoods(@PathVariable("foodId")  String foodId)
+    {
+        FoodResponse foodResponse = foodAppService.getFoodById(foodId);
+
+        ResponseEntity<FoodResponse> foodResponseEntity = new ResponseEntity<>(foodResponse,HttpStatus.OK);
+
+        return foodResponseEntity;
+    }
+
+    @DeleteMapping("/deleteFood/{foodId}")
+    public ResponseEntity<Object> deleteFoodById(@PathVariable("foodId")  String foodId)
+    {
+        foodAppService.deleteFoodById(foodId);
+
+        ResponseEntity<Object> foodResponseEntity = new ResponseEntity<>(HttpStatus.NO_CONTENT);
 
         return foodResponseEntity;
     }

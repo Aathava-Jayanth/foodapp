@@ -3,6 +3,7 @@ package com.aj.foodapp.service;
 import com.aj.foodapp.entity.FoodEntity;
 import com.aj.foodapp.configuration.FileStorageConfig;
 import com.aj.foodapp.exception.CustomFileStorageException;
+import com.aj.foodapp.exception.FoodNotFoundException;
 import com.aj.foodapp.repository.FoodRepository;
 import com.aj.foodapp.requestObject.FoodRequest;
 import com.aj.foodapp.responseObject.FoodResponse;
@@ -16,6 +17,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class FoodAppServiceImpl implements FoodAppService {
@@ -42,11 +48,11 @@ public class FoodAppServiceImpl implements FoodAppService {
         this.foodRepository = foodRepository;
     }
 
-//    My Implementation for location
-//    private String location = "D:/SpringBoot React Projects/foodapp_images/";
-//    private final Path rootLocation = Paths.get(location);
+    // My Implementation for location
+    // private String location = "D:/SpringBoot React Projects/foodapp_images/";
+    // private final Path rootLocation = Paths.get(location);
 
-    @Override
+    // Method to Store Image File In File System
     public String storeFileInFileSystem(MultipartFile file) {
 
         Path destinationFile;
@@ -57,15 +63,26 @@ public class FoodAppServiceImpl implements FoodAppService {
                 throw new CustomFileStorageException("Failed to store empty file.");
             }
 
+            // Store The File With Original File Name
+            // destinationFile = this.rootLocation.resolve(
+            //                Paths.get(file.getOriginalFilename()))
+            //        .normalize().toAbsolutePath();
+
+
+            // Custom File Name Creation
+            String fileName  = getCustomFileName();
+            String fileExtention = getFileExtention(file);
+
+
             destinationFile = this.rootLocation.resolve(
-                            Paths.get(file.getOriginalFilename()))
+                            Paths.get(generateCustomFileNameWithExtention(fileName,fileExtention)))
                     .normalize().toAbsolutePath();
 
 
             log.info("Destination File Created : "+destinationFile.toString());
 
 
-            if (!destinationFile.getParent().equals(this.rootLocation.toAbsolutePath())) {
+            if ( ! destinationFile.getParent().equals(this.rootLocation.toAbsolutePath()) ) {
                 // This is a security check
                 throw new CustomFileStorageException(
                         "Cannot store file outside current directory.");
@@ -76,6 +93,7 @@ public class FoodAppServiceImpl implements FoodAppService {
             try (InputStream inputStream = file.getInputStream()) {
 
                 log.info("File (Info) Name : "+file.getName()+" "+file.getOriginalFilename()+" "+file.getContentType());
+                log.info("Custom File (Info) Name : "+fileName+" "+fileExtention+" "+file.getContentType());
 
                 Files.copy(inputStream, destinationFile,
                         StandardCopyOption.REPLACE_EXISTING);
@@ -97,6 +115,36 @@ public class FoodAppServiceImpl implements FoodAppService {
         return destinationFile.getParent().toString().concat("\\").concat(destinationFile.getFileName().toString());
     }
 
+    // Method Image File From File System
+    private boolean deleteFileFromFileSystem(String foodImageURL)
+    {
+        try {
+
+            Path filePath = Paths.get(foodImageURL);
+
+            log.info("Delete File Path {}",filePath);
+
+            if (Files.exists(filePath)) {
+
+                Files.delete(filePath); // File deleted successfully
+                log.info("File Deleted Successfully");
+
+            } else {
+
+                log.error("File not found : {}",foodImageURL); // File does not exist
+
+            }
+
+        } catch (Exception e)
+        {
+            log.error("Failed to delete file : " + foodImageURL + " - " + e.getMessage());
+            throw new CustomFileStorageException(e.getMessage(),e);
+        }
+
+        return true;
+    }
+
+    // Method to Upload Food Request
     @Override
     public FoodResponse uploadNewFood(FoodRequest foodRequest, MultipartFile file) {
 
@@ -106,6 +154,8 @@ public class FoodAppServiceImpl implements FoodAppService {
 
         String foodImageUrl = storeFileInFileSystem(file);
 
+        log.info("Food Image URL : {}",foodImageUrl);
+
         newFoodEntity.setImageUrl(foodImageUrl);
 
         newFoodEntity = foodRepository.save(newFoodEntity);
@@ -113,6 +163,52 @@ public class FoodAppServiceImpl implements FoodAppService {
         log.info("Food Upload Ended for : "+foodRequest.toString());
 
         return convertFoodResponse(newFoodEntity);
+    }
+
+    @Override
+    public List<FoodResponse> getAllFoods() {
+
+        List<FoodResponse> listOfFoods = foodRepository.findAll()
+                .stream()
+                .map(this::convertFoodResponse)
+                .toList();
+
+        return listOfFoods;
+
+    }
+
+    @Override
+    public FoodResponse getFoodById(String foodId) {
+
+        FoodEntity foodEntity = foodRepository.findById(foodId).orElse(null);
+
+        if (foodEntity == null)
+        {
+            throw new FoodNotFoundException("Food Not Found With Id : "+foodId);
+        }
+
+        FoodResponse foodResponse = convertFoodResponse(foodEntity);
+
+        return foodResponse;
+    }
+
+    @Override
+    public void deleteFoodById(String foodId) {
+
+        FoodResponse foodResponse = this.getFoodById(foodId);
+
+        String foodImageURL = foodResponse.getImageUrl();
+
+        boolean isFoodImageDeleted = false;
+
+        isFoodImageDeleted = deleteFileFromFileSystem(foodImageURL);
+
+        if(isFoodImageDeleted)
+        {
+            foodRepository.deleteById(foodResponse.getId());
+            log.info("Food Deleted Successfully");
+        }
+
     }
 
     private FoodEntity convertFoodEntity(FoodRequest foodRequest)
@@ -143,5 +239,24 @@ public class FoodAppServiceImpl implements FoodAppService {
                 .build();
     }
 
+    public String getFileExtention(MultipartFile file)
+    {
+        String fileExtention = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
+
+        return fileExtention;
+    }
+
+    public String getCustomFileName()
+    {
+        String fileName = UUID.randomUUID().toString();
+        // String fileName = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+
+        return fileName;
+    }
+
+    public String generateCustomFileNameWithExtention(String fileName,String fileExtention)
+    {
+        return fileName+"."+fileExtention;
+    }
 
 }
